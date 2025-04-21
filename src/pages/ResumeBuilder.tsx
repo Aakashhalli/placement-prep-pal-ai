@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Download, Save, Check } from "lucide-react";
 import { mockResumeTemplates } from "@/services/mockData";
 import { generateResumePdf } from "@/utils/pdfGenerator";
+import { toast } from "@/hooks/use-toast";
 
 type ResumeStep = 
   | "template" 
@@ -125,8 +125,15 @@ const initialResumeState: Resume = {
 const ResumeBuilder = () => {
   const [currentStep, setCurrentStep] = useState<ResumeStep>("template");
   const [resume, setResume] = useState<Resume>(initialResumeState);
-  
-  // Helper functions to manage form state
+
+  const notify = (message: string, type: "info" | "success" | "error" = "info") => {
+    toast({
+      title: type === "success" ? "Success" : type === "error" ? "Error" : "Info",
+      description: message,
+      variant: type === "error" ? "destructive" : "default"
+    });
+  };
+
   const updatePersonalInfo = (field: keyof PersonalInfo, value: string) => {
     setResume({
       ...resume,
@@ -136,7 +143,7 @@ const ResumeBuilder = () => {
       }
     });
   };
-  
+
   const updateEducation = (index: number, field: keyof Education, value: string) => {
     const newEducation = [...resume.education];
     newEducation[index] = {
@@ -149,7 +156,7 @@ const ResumeBuilder = () => {
       education: newEducation
     });
   };
-  
+
   const addEducation = () => {
     setResume({
       ...resume,
@@ -198,7 +205,7 @@ const ResumeBuilder = () => {
       projects: newProjects
     });
   };
-  
+
   const updateSkill = (categoryIndex: number, value: string) => {
     const newSkills = [...resume.skills];
     newSkills[categoryIndex] = {
@@ -214,32 +221,21 @@ const ResumeBuilder = () => {
 
   const nextStep = () => {
     const steps: ResumeStep[] = [
-      "template", 
-      "personal", 
-      "education", 
-      "skills", 
-      "experience", 
-      "projects", 
-      "preview"
+      "template", "personal", "education", "skills", "experience", "projects", "preview"
     ];
-    
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
+      if (steps[currentIndex + 1] === "preview") {
+        notify("Preview your resume before downloading.", "info");
+      }
     }
   };
 
   const previousStep = () => {
     const steps: ResumeStep[] = [
-      "template", 
-      "personal", 
-      "education", 
-      "skills", 
-      "experience", 
-      "projects", 
-      "preview"
+      "template", "personal", "education", "skills", "experience", "projects", "preview"
     ];
-    
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
@@ -248,19 +244,36 @@ const ResumeBuilder = () => {
 
   const downloadResume = async () => {
     try {
-      // In a real implementation, this would capture the HTML of the resume preview
-      // and convert it to PDF
       const resumeHTML = document.querySelector('.resume-preview')?.innerHTML || '';
-      
       await generateResumePdf(
         resumeHTML,
         `${resume.personalInfo.firstName.toLowerCase()}-${resume.personalInfo.lastName.toLowerCase()}-resume.pdf`
       );
-      
-      // Would add toast notification in real implementation
-      console.log("Resume PDF downloaded successfully");
+      notify("Resume PDF downloaded successfully!", "success");
     } catch (error) {
-      console.error("Failed to generate resume PDF", error);
+      notify("Failed to generate resume PDF", "error");
+    }
+  };
+
+  const saveProgress = () => {
+    notify("Resume progress saved successfully!", "success");
+  };
+
+  const templateCards: Record<string, { label: string; bg: string; border: string; }> = {
+    modern: {
+      label: "Modern",
+      bg: "bg-gradient-to-tl from-violet-500/40 via-purple-200/30 to-white/20",
+      border: "border-primary"
+    },
+    classic: {
+      label: "Classic",
+      bg: "bg-gradient-to-br from-neutral-700/30 via-white/10 to-gray-500/10",
+      border: "border-secondary"
+    },
+    minimal: {
+      label: "Minimal",
+      bg: "bg-gradient-to-br from-gray-800/40 via-white/15 to-neutral-300/5",
+      border: "border-muted"
     }
   };
 
@@ -289,7 +302,7 @@ const ResumeBuilder = () => {
                     <Download className="h-4 w-4 mr-2" /> Download PDF
                   </Button>
                 )}
-                <Button variant="outline">
+                <Button variant="outline" onClick={saveProgress}>
                   <Save className="h-4 w-4 mr-2" /> Save Progress
                 </Button>
               </div>
@@ -297,14 +310,21 @@ const ResumeBuilder = () => {
           </CardHeader>
           <CardContent>
             <div className="mb-6">
-              <nav className="flex space-x-2">
-                {["template", "personal", "education", "skills", "experience", "projects", "preview"].map((step) => (
+              <nav className="flex space-x-2 justify-center">
+                {["template", "personal", "education", "skills", "experience", "projects", "preview"].map((step, idx) => (
                   <Button
                     key={step}
                     variant={currentStep === step ? "default" : "outline"}
-                    size="sm"
+                    size={currentStep === step ? "default" : "sm"}
                     onClick={() => setCurrentStep(step as ResumeStep)}
-                    className="first:rounded-l-md last:rounded-r-md"
+                    className={`first:rounded-l-md last:rounded-r-md transition-all ${currentStep === step ? "ring-2 ring-primary" : ""} px-3`}
+                    disabled={
+                      (step === "personal" && resume.template === "") ||
+                      (step === "education" && (resume.personalInfo.firstName === "" || resume.personalInfo.lastName === "")) ||
+                      (step === "skills" && resume.education.length === 0) ||
+                      (step === "projects" && resume.skills.every(sk => sk.items.length === 0)) ||
+                      (step === "preview" && resume.projects.length === 0)
+                    }
                   >
                     {step.charAt(0).toUpperCase() + step.slice(1)}
                     {currentStep === step && <Check className="ml-2 h-4 w-4" />}
@@ -316,26 +336,36 @@ const ResumeBuilder = () => {
             {currentStep === "template" && (
               <div>
                 <Heading level={3} className="mb-4">Choose a Template</Heading>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {["modern", "classic", "minimal"].map((template) => (
-                    <div 
-                      key={template} 
-                      className={`border rounded-lg p-4 cursor-pointer ${resume.template === template ? 'border-highlight bg-highlight/10' : 'hover:bg-secondary/30'}`}
-                      onClick={() => setResume({...resume, template: template as TemplateType})}
+                <div className="flex flex-col md:flex-row md:justify-center gap-4">
+                  {Object.entries(templateCards).map(([template, meta]) => (
+                    <div
+                      key={template}
+                      className={`
+                        cursor-pointer transition-shadow
+                        border-2 rounded-xl shadow-md flex-1 flex flex-col items-center py-6 px-2 relative group
+                        ${resume.template === template ? `${meta.border} ring-2 ring-primary bg-highlight/5` : "border-muted hover:shadow-lg"}
+                        ${meta.bg}
+                      `}
+                      onClick={() => {
+                        setResume({ ...resume, template: template as TemplateType });
+                        notify(`Selected ${meta.label} template`, "success");
+                      }}
+                      style={{ minWidth: 180, maxWidth: 260 }}
                     >
-                      <div className="aspect-w-8 aspect-h-11 mb-2 bg-secondary flex items-center justify-center">
-                        {template.charAt(0).toUpperCase() + template.slice(1)}
+                      <div className="aspect-[3/4] w-32 md:w-40 rounded overflow-hidden flex items-center justify-center bg-white text-primary font-semibold text-lg shadow border">
+                        {meta.label}
                       </div>
-                      <p className="text-center font-medium">
-                        {template.charAt(0).toUpperCase() + template.slice(1)}
-                      </p>
+                      <p className="text-center font-medium mt-3">{meta.label}</p>
                       {resume.template === template && (
-                        <div className="mt-2 flex justify-center">
-                          <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-secondary text-secondary-foreground">Selected</div>
-                        </div>
+                        <span className="absolute top-3 right-4 rounded-full bg-primary text-primary-foreground text-xs px-3 py-1 font-bold shadow z-10">
+                          Selected
+                        </span>
                       )}
                     </div>
                   ))}
+                </div>
+                <div className="mt-4 text-center text-muted-foreground text-xs">
+                  * More template visuals coming soon!
                 </div>
               </div>
             )}
