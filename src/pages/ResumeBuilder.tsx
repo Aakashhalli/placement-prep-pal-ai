@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -319,8 +320,8 @@ const ResumeBuilder = () => {
                     onClick={() => setCurrentStep(step as ResumeStep)}
                     className={`first:rounded-l-md last:rounded-r-md transition-all ${currentStep === step ? "ring-2 ring-primary" : ""} px-3`}
                     disabled={
-                      (step === "personal" && resume.template === "") ||
-                      (step === "education" && (resume.personalInfo.firstName === "" || resume.personalInfo.lastName === "")) ||
+                      (step === "personal" && !resume.template) ||
+                      (step === "education" && (!resume.personalInfo.firstName || !resume.personalInfo.lastName)) ||
                       (step === "skills" && resume.education.length === 0) ||
                       (step === "projects" && resume.skills.every(sk => sk.items.length === 0)) ||
                       (step === "preview" && resume.projects.length === 0)
