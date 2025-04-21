@@ -8,78 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Heading } from "@/components/ui/heading";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, Download, Save, Check } from "lucide-react";
-import { mockResumeTemplates } from "@/services/mockData";
+import { ArrowLeft, ArrowRight, Download, Save, Check, Trash2, Copy, Plus, FilePlus, Briefcase, GraduationCap, Code } from "lucide-react";
 import { generateResumePdf } from "@/utils/pdfGenerator";
 import { toast } from "@/hooks/use-toast";
-
-type ResumeStep = 
-  | "template" 
-  | "personal" 
-  | "education" 
-  | "skills" 
-  | "experience" 
-  | "projects" 
-  | "preview";
-
-type TemplateType = "modern" | "classic" | "minimal";
-
-interface PersonalInfo {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  linkedin?: string;
-  github?: string;
-  website?: string;
-  location: string;
-}
-
-interface Education {
-  institution: string;
-  degree: string;
-  fieldOfStudy: string;
-  startDate: string;
-  endDate: string;
-  gpa: string;
-  location: string;
-  description?: string;
-}
-
-interface Experience {
-  id: string;
-  company: string;
-  position: string;
-  startDate: string;
-  endDate: string;
-  location: string;
-  description: string;
-  highlights: string[];
-}
-
-interface Skill {
-  category: string;
-  items: string[];
-}
-
-interface Project {
-  id: string;
-  title: string;
-  description: string;
-  technologies: string[];
-  link?: string;
-  startDate: string;
-  endDate: string;
-}
-
-interface Resume {
-  template: TemplateType;
-  personalInfo: PersonalInfo;
-  education: Education[];
-  skills: Skill[];
-  experience: Experience[];
-  projects: Project[];
-}
+import TemplateSelector from "@/components/resume/TemplateSelector";
+import ResumeSteps from "@/components/resume/ResumeSteps";
+import { ResumeStep, Resume, TemplateType, Experience, Project } from "@/types/resume";
 
 const initialResumeState: Resume = {
   template: "modern",
@@ -91,7 +25,9 @@ const initialResumeState: Resume = {
     linkedin: "",
     github: "",
     website: "",
-    location: ""
+    location: "",
+    jobTitle: "",
+    bio: ""
   },
   education: [
     {
@@ -120,7 +56,9 @@ const initialResumeState: Resume = {
     }
   ],
   experience: [],
-  projects: []
+  projects: [],
+  certificates: [],
+  languages: []
 };
 
 const ResumeBuilder = () => {
@@ -135,7 +73,7 @@ const ResumeBuilder = () => {
     });
   };
 
-  const updatePersonalInfo = (field: keyof PersonalInfo, value: string) => {
+  const updatePersonalInfo = (field: keyof Resume["personalInfo"], value: string) => {
     setResume({
       ...resume,
       personalInfo: {
@@ -145,7 +83,7 @@ const ResumeBuilder = () => {
     });
   };
 
-  const updateEducation = (index: number, field: keyof Education, value: string) => {
+  const updateEducation = (index: number, field: keyof Resume["education"][0], value: string) => {
     const newEducation = [...resume.education];
     newEducation[index] = {
       ...newEducation[index],
@@ -175,6 +113,67 @@ const ResumeBuilder = () => {
         }
       ]
     });
+    notify("New education entry added", "success");
+  };
+
+  const removeEducation = (index: number) => {
+    if (resume.education.length <= 1) {
+      notify("You must have at least one education entry", "error");
+      return;
+    }
+    
+    const newEducation = [...resume.education];
+    newEducation.splice(index, 1);
+    
+    setResume({
+      ...resume,
+      education: newEducation
+    });
+    notify("Education entry removed", "info");
+  };
+
+  const addExperience = () => {
+    setResume({
+      ...resume,
+      experience: [
+        ...resume.experience,
+        {
+          id: Date.now().toString(),
+          company: "",
+          position: "",
+          startDate: "",
+          endDate: "",
+          location: "",
+          description: "",
+          highlights: []
+        }
+      ]
+    });
+    notify("New experience entry added", "success");
+  };
+
+  const updateExperience = (index: number, field: keyof Experience, value: any) => {
+    const newExperience = [...resume.experience];
+    newExperience[index] = {
+      ...newExperience[index],
+      [field]: value
+    };
+    
+    setResume({
+      ...resume,
+      experience: newExperience
+    });
+  };
+
+  const removeExperience = (index: number) => {
+    const newExperience = [...resume.experience];
+    newExperience.splice(index, 1);
+    
+    setResume({
+      ...resume,
+      experience: newExperience
+    });
+    notify("Experience entry removed", "info");
   };
 
   const addProject = () => {
@@ -192,6 +191,7 @@ const ResumeBuilder = () => {
         }
       ]
     });
+    notify("New project added", "success");
   };
 
   const updateProject = (index: number, field: keyof Project, value: any) => {
@@ -207,17 +207,71 @@ const ResumeBuilder = () => {
     });
   };
 
+  const removeProject = (index: number) => {
+    const newProjects = [...resume.projects];
+    newProjects.splice(index, 1);
+    
+    setResume({
+      ...resume,
+      projects: newProjects
+    });
+    notify("Project removed", "info");
+  };
+
   const updateSkill = (categoryIndex: number, value: string) => {
     const newSkills = [...resume.skills];
     newSkills[categoryIndex] = {
       ...newSkills[categoryIndex],
-      items: value.split(',').map(item => item.trim())
+      items: value.split(',').map(item => item.trim()).filter(item => item !== '')
     };
     
     setResume({
       ...resume,
       skills: newSkills
     });
+  };
+
+  const addSkillCategory = () => {
+    setResume({
+      ...resume,
+      skills: [
+        ...resume.skills,
+        {
+          category: "New Category",
+          items: []
+        }
+      ]
+    });
+    notify("New skill category added", "success");
+  };
+
+  const updateSkillCategory = (index: number, categoryName: string) => {
+    const newSkills = [...resume.skills];
+    newSkills[index] = {
+      ...newSkills[index],
+      category: categoryName
+    };
+    
+    setResume({
+      ...resume,
+      skills: newSkills
+    });
+  };
+
+  const removeSkillCategory = (index: number) => {
+    if (resume.skills.length <= 1) {
+      notify("You must have at least one skill category", "error");
+      return;
+    }
+    
+    const newSkills = [...resume.skills];
+    newSkills.splice(index, 1);
+    
+    setResume({
+      ...resume,
+      skills: newSkills
+    });
+    notify("Skill category removed", "info");
   };
 
   const nextStep = () => {
@@ -228,7 +282,7 @@ const ResumeBuilder = () => {
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
       if (steps[currentIndex + 1] === "preview") {
-        notify("Preview your resume before downloading.", "info");
+        notify("Preview your resume before downloading", "info");
       }
     }
   };
@@ -257,42 +311,34 @@ const ResumeBuilder = () => {
   };
 
   const saveProgress = () => {
+    // In a real application, this would save to a database
+    localStorage.setItem('savedResume', JSON.stringify(resume));
     notify("Resume progress saved successfully!", "success");
   };
 
-  const templateCards: Record<string, { label: string; bg: string; border: string; }> = {
-    modern: {
-      label: "Modern",
-      bg: "bg-gradient-to-tl from-violet-500/40 via-purple-200/30 to-white/20",
-      border: "border-primary"
-    },
-    classic: {
-      label: "Classic",
-      bg: "bg-gradient-to-br from-neutral-700/30 via-white/10 to-gray-500/10",
-      border: "border-secondary"
-    },
-    minimal: {
-      label: "Minimal",
-      bg: "bg-gradient-to-br from-gray-800/40 via-white/15 to-neutral-300/5",
-      border: "border-muted"
-    }
+  const selectTemplate = (template: TemplateType) => {
+    setResume({
+      ...resume,
+      template
+    });
+    notify(`Selected ${template} template`, "success");
   };
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <div className="max-w-4xl mx-auto">
+    <div className="container mx-auto px-4 py-6 md:py-12">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-8 text-center">
           <Heading level={1} className="mb-2">ATS-Friendly Resume Builder</Heading>
-          <p className="text-muted-foreground">
-            Create a professional resume optimized for Applicant Tracking Systems
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Create a professional resume optimized for Applicant Tracking Systems with our easy-to-use builder. Follow the steps below to craft your perfect resume.
           </p>
         </div>
 
-        <Card>
+        <Card className="border shadow-lg">
           <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-4">
               <div>
-                <CardTitle>Resume Builder</CardTitle>
+                <CardTitle className="text-2xl font-bold">Resume Builder</CardTitle>
                 <CardDescription>
                   Step-by-step guide to create your perfect resume
                 </CardDescription>
@@ -311,123 +357,78 @@ const ResumeBuilder = () => {
           </CardHeader>
           <CardContent>
             <div className="mb-6">
-              <nav className="flex space-x-2 justify-center">
-                {["template", "personal", "education", "skills", "experience", "projects", "preview"].map((step, idx) => (
-                  <Button
-                    key={step}
-                    variant={currentStep === step ? "default" : "outline"}
-                    size={currentStep === step ? "default" : "sm"}
-                    onClick={() => setCurrentStep(step as ResumeStep)}
-                    className={`first:rounded-l-md last:rounded-r-md transition-all ${currentStep === step ? "ring-2 ring-primary" : ""} px-3`}
-                    disabled={
-                      (step === "personal" && !resume.template) ||
-                      (step === "education" && (!resume.personalInfo.firstName || !resume.personalInfo.lastName)) ||
-                      (step === "skills" && resume.education.length === 0) ||
-                      (step === "projects" && resume.skills.every(sk => sk.items.length === 0)) ||
-                      (step === "preview" && resume.projects.length === 0)
-                    }
-                  >
-                    {step.charAt(0).toUpperCase() + step.slice(1)}
-                    {currentStep === step && <Check className="ml-2 h-4 w-4" />}
-                  </Button>
-                ))}
-              </nav>
+              <ResumeSteps 
+                currentStep={currentStep} 
+                resume={resume} 
+                onStepClick={setCurrentStep} 
+              />
             </div>
 
             {currentStep === "template" && (
-              <div>
-                <Heading level={3} className="mb-4">Choose a Template</Heading>
-                <div className="flex flex-col md:flex-row md:justify-center gap-4">
-                  {Object.entries(templateCards).map(([template, meta]) => (
-                    <div
-                      key={template}
-                      className={`
-                        cursor-pointer transition-shadow
-                        border-2 rounded-xl shadow-md flex-1 flex flex-col items-center py-6 px-2 relative group
-                        ${resume.template === template ? `${meta.border} ring-2 ring-primary bg-highlight/5` : "border-muted hover:shadow-lg"}
-                        ${meta.bg}
-                      `}
-                      onClick={() => {
-                        setResume({ ...resume, template: template as TemplateType });
-                        notify(`Selected ${meta.label} template`, "success");
-                      }}
-                      style={{ minWidth: 180, maxWidth: 260 }}
-                    >
-                      <div className="aspect-[3/4] w-32 md:w-40 rounded overflow-hidden flex items-center justify-center bg-white text-primary font-semibold text-lg shadow border">
-                        {meta.label}
-                      </div>
-                      <p className="text-center font-medium mt-3">{meta.label}</p>
-                      {resume.template === template && (
-                        <span className="absolute top-3 right-4 rounded-full bg-primary text-primary-foreground text-xs px-3 py-1 font-bold shadow z-10">
-                          Selected
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              <div className="space-y-6">
+                <Heading level={3} className="mb-4 text-center">Choose a Template</Heading>
+                <TemplateSelector 
+                  selectedTemplate={resume.template} 
+                  onSelectTemplate={selectTemplate} 
+                />
                 <div className="mt-4 text-center text-muted-foreground text-xs">
-                  * More template visuals coming soon!
+                  * All templates are optimized for ATS scanning while maintaining professional design
                 </div>
               </div>
             )}
 
             {currentStep === "personal" && (
-              <div>
+              <div className="space-y-6">
                 <Heading level={3} className="mb-4">Personal Information</Heading>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="firstName">First Name *</Label>
                     <Input 
                       id="firstName" 
                       value={resume.personalInfo.firstName}
                       onChange={(e) => updatePersonalInfo('firstName', e.target.value)}
+                      placeholder="John"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="lastName">Last Name *</Label>
                     <Input 
                       id="lastName" 
                       value={resume.personalInfo.lastName}
                       onChange={(e) => updatePersonalInfo('lastName', e.target.value)}
+                      placeholder="Doe"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="jobTitle">Professional Title</Label>
+                    <Input 
+                      id="jobTitle" 
+                      value={resume.personalInfo.jobTitle || ''}
+                      onChange={(e) => updatePersonalInfo('jobTitle', e.target.value)}
+                      placeholder="Software Engineer"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email *</Label>
                     <Input 
                       id="email" 
                       type="email"
                       value={resume.personalInfo.email}
                       onChange={(e) => updatePersonalInfo('email', e.target.value)}
+                      placeholder="john.doe@example.com"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="phone">Phone</Label>
+                    <Label htmlFor="phone">Phone *</Label>
                     <Input 
                       id="phone" 
                       value={resume.personalInfo.phone}
                       onChange={(e) => updatePersonalInfo('phone', e.target.value)}
+                      placeholder="+1 (555) 123-4567"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="linkedin">LinkedIn (optional)</Label>
-                    <Input 
-                      id="linkedin" 
-                      placeholder="https://linkedin.com/in/username"
-                      value={resume.personalInfo.linkedin || ''}
-                      onChange={(e) => updatePersonalInfo('linkedin', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="github">GitHub (optional)</Label>
-                    <Input 
-                      id="github" 
-                      placeholder="https://github.com/username"
-                      value={resume.personalInfo.github || ''}
-                      onChange={(e) => updatePersonalInfo('github', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="location">Location</Label>
+                    <Label htmlFor="location">Location *</Label>
                     <Input 
                       id="location" 
                       placeholder="City, State"
@@ -436,7 +437,25 @@ const ResumeBuilder = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="website">Personal Website (optional)</Label>
+                    <Label htmlFor="linkedin">LinkedIn</Label>
+                    <Input 
+                      id="linkedin" 
+                      placeholder="https://linkedin.com/in/username"
+                      value={resume.personalInfo.linkedin || ''}
+                      onChange={(e) => updatePersonalInfo('linkedin', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="github">GitHub</Label>
+                    <Input 
+                      id="github" 
+                      placeholder="https://github.com/username"
+                      value={resume.personalInfo.github || ''}
+                      onChange={(e) => updatePersonalInfo('github', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="website">Personal Website</Label>
                     <Input 
                       id="website" 
                       placeholder="https://example.com"
@@ -445,43 +464,64 @@ const ResumeBuilder = () => {
                     />
                   </div>
                 </div>
+                <div>
+                  <Label htmlFor="bio">Professional Summary</Label>
+                  <Textarea 
+                    id="bio" 
+                    placeholder="A brief summary of your professional background and goals..."
+                    value={resume.personalInfo.bio || ''}
+                    onChange={(e) => updatePersonalInfo('bio', e.target.value)}
+                    className="min-h-[100px]"
+                  />
+                </div>
               </div>
             )}
 
             {currentStep === "education" && (
-              <div>
+              <div className="space-y-6">
                 <div className="flex justify-between items-center mb-4">
                   <Heading level={3}>Education</Heading>
                   <Button variant="outline" size="sm" onClick={addEducation}>
-                    Add Education
+                    <Plus className="h-4 w-4 mr-2" /> Add Education
                   </Button>
                 </div>
                 {resume.education.map((edu, index) => (
-                  <div key={index} className="mb-6 p-4 border rounded-lg">
-                    <Heading level={4} className="mb-4">Education #{index + 1}</Heading>
+                  <div key={index} className="mb-6 p-4 border rounded-lg bg-card/50">
+                    <div className="flex justify-between items-center mb-4">
+                      <Heading level={4} className="flex items-center">
+                        <GraduationCap className="h-5 w-5 mr-2 text-muted-foreground" /> 
+                        Education #{index + 1}
+                      </Heading>
+                      <Button variant="ghost" size="sm" onClick={() => removeEducation(index)} className="h-8 w-8 p-0" disabled={resume.education.length <= 1}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor={`institution-${index}`}>Institution</Label>
+                        <Label htmlFor={`institution-${index}`}>Institution *</Label>
                         <Input 
                           id={`institution-${index}`} 
                           value={edu.institution}
                           onChange={(e) => updateEducation(index, 'institution', e.target.value)}
+                          placeholder="University Name"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`degree-${index}`}>Degree</Label>
+                        <Label htmlFor={`degree-${index}`}>Degree *</Label>
                         <Input 
                           id={`degree-${index}`} 
                           value={edu.degree}
                           onChange={(e) => updateEducation(index, 'degree', e.target.value)}
+                          placeholder="Bachelor of Science"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`field-${index}`}>Field of Study</Label>
+                        <Label htmlFor={`field-${index}`}>Field of Study *</Label>
                         <Input 
                           id={`field-${index}`} 
                           value={edu.fieldOfStudy}
                           onChange={(e) => updateEducation(index, 'fieldOfStudy', e.target.value)}
+                          placeholder="Computer Science"
                         />
                       </div>
                       <div>
@@ -490,10 +530,11 @@ const ResumeBuilder = () => {
                           id={`gpa-${index}`} 
                           value={edu.gpa}
                           onChange={(e) => updateEducation(index, 'gpa', e.target.value)}
+                          placeholder="3.8/4.0"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`start-date-${index}`}>Start Date</Label>
+                        <Label htmlFor={`start-date-${index}`}>Start Date *</Label>
                         <Input 
                           id={`start-date-${index}`} 
                           type="month"
@@ -502,7 +543,7 @@ const ResumeBuilder = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`end-date-${index}`}>End Date</Label>
+                        <Label htmlFor={`end-date-${index}`}>End Date (or Expected) *</Label>
                         <Input 
                           id={`end-date-${index}`} 
                           type="month"
@@ -511,11 +552,12 @@ const ResumeBuilder = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`location-${index}`}>Location</Label>
+                        <Label htmlFor={`location-${index}`}>Location *</Label>
                         <Input 
                           id={`location-${index}`} 
                           value={edu.location}
                           onChange={(e) => updateEducation(index, 'location', e.target.value)}
+                          placeholder="City, State, Country"
                         />
                       </div>
                     </div>
@@ -525,6 +567,7 @@ const ResumeBuilder = () => {
                         id={`description-${index}`} 
                         value={edu.description || ''}
                         onChange={(e) => updateEducation(index, 'description', e.target.value)}
+                        placeholder="Relevant coursework, achievements, or honors"
                       />
                     </div>
                   </div>
@@ -533,35 +576,182 @@ const ResumeBuilder = () => {
             )}
 
             {currentStep === "skills" && (
-              <div>
-                <Heading level={3} className="mb-4">Skills</Heading>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center mb-4">
+                  <Heading level={3}>Skills</Heading>
+                  <Button variant="outline" size="sm" onClick={addSkillCategory}>
+                    <Plus className="h-4 w-4 mr-2" /> Add Category
+                  </Button>
+                </div>
                 <p className="text-muted-foreground mb-4">
                   Enter skills separated by commas (e.g., "JavaScript, React, Node.js")
                 </p>
                 {resume.skills.map((skill, index) => (
-                  <div key={index} className="mb-4">
-                    <Label htmlFor={`skills-${index}`}>{skill.category}</Label>
-                    <Textarea 
-                      id={`skills-${index}`} 
-                      placeholder={`Enter ${skill.category.toLowerCase()} skills`}
-                      value={skill.items.join(', ')}
-                      onChange={(e) => updateSkill(index, e.target.value)}
-                    />
+                  <div key={index} className="mb-4 p-4 border rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex-1 mr-4">
+                        <Label htmlFor={`skill-category-${index}`}>Category</Label>
+                        <Input 
+                          id={`skill-category-${index}`} 
+                          value={skill.category}
+                          onChange={(e) => updateSkillCategory(index, e.target.value)}
+                          placeholder="Category Name"
+                        />
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => removeSkillCategory(index)} 
+                        className="h-8 w-8 p-0 mt-6"
+                        disabled={resume.skills.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                    <div>
+                      <Label htmlFor={`skills-${index}`}>{skill.category} Skills</Label>
+                      <Textarea 
+                        id={`skills-${index}`} 
+                        placeholder={`Enter ${skill.category.toLowerCase()} skills, separated by commas`}
+                        value={skill.items.join(', ')}
+                        onChange={(e) => updateSkill(index, e.target.value)}
+                      />
+                      {skill.items.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {skill.items.map((item, idx) => (
+                            <Badge key={idx} variant="secondary" className="mr-1 mb-1">{item}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
+            {currentStep === "experience" && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center mb-4">
+                  <Heading level={3}>Work Experience</Heading>
+                  <Button variant="outline" size="sm" onClick={addExperience}>
+                    <Plus className="h-4 w-4 mr-2" /> Add Experience
+                  </Button>
+                </div>
+                
+                {resume.experience.length === 0 ? (
+                  <div className="text-center py-8 border rounded-lg">
+                    <Briefcase className="mx-auto h-12 w-12 text-muted-foreground opacity-30 mb-4" />
+                    <p className="text-muted-foreground mb-4">
+                      No work experience added yet. Add your professional experience to showcase your skills!
+                    </p>
+                    <Button onClick={addExperience}>Add Your First Experience</Button>
+                  </div>
+                ) : (
+                  resume.experience.map((exp, index) => (
+                    <div key={exp.id} className="mb-6 p-4 border rounded-lg bg-card/50">
+                      <div className="flex justify-between items-center mb-4">
+                        <Heading level={4} className="flex items-center">
+                          <Briefcase className="h-5 w-5 mr-2 text-muted-foreground" />
+                          Experience #{index + 1}
+                        </Heading>
+                        <Button variant="ghost" size="sm" onClick={() => removeExperience(index)} className="h-8 w-8 p-0">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor={`company-${index}`}>Company *</Label>
+                          <Input 
+                            id={`company-${index}`} 
+                            value={exp.company}
+                            onChange={(e) => updateExperience(index, 'company', e.target.value)}
+                            placeholder="Company Name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`position-${index}`}>Position *</Label>
+                          <Input 
+                            id={`position-${index}`} 
+                            value={exp.position}
+                            onChange={(e) => updateExperience(index, 'position', e.target.value)}
+                            placeholder="Software Engineer"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`exp-start-${index}`}>Start Date *</Label>
+                          <Input 
+                            id={`exp-start-${index}`} 
+                            type="month"
+                            value={exp.startDate}
+                            onChange={(e) => updateExperience(index, 'startDate', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`exp-end-${index}`}>End Date *</Label>
+                          <Input 
+                            id={`exp-end-${index}`} 
+                            type="month"
+                            value={exp.endDate}
+                            onChange={(e) => updateExperience(index, 'endDate', e.target.value)}
+                            placeholder="Present (for current positions)"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`exp-location-${index}`}>Location *</Label>
+                          <Input 
+                            id={`exp-location-${index}`} 
+                            value={exp.location}
+                            onChange={(e) => updateExperience(index, 'location', e.target.value)}
+                            placeholder="City, State, Country"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4">
+                        <Label htmlFor={`exp-description-${index}`}>Description *</Label>
+                        <Textarea 
+                          id={`exp-description-${index}`} 
+                          value={exp.description}
+                          onChange={(e) => updateExperience(index, 'description', e.target.value)}
+                          placeholder="Describe your responsibilities and achievements in this role"
+                          className="min-h-[100px]"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Pro tip: Use bullet points and action verbs to highlight your achievements
+                        </p>
+                      </div>
+                      
+                      <div className="mt-4">
+                        <Label htmlFor={`highlights-${index}`}>Key Achievements (separated by new lines)</Label>
+                        <Textarea 
+                          id={`highlights-${index}`} 
+                          value={exp.highlights.join('\n')}
+                          onChange={(e) => updateExperience(index, 'highlights', e.target.value.split('\n').filter(h => h.trim() !== ''))}
+                          placeholder="• Increased site performance by 40%
+• Led a team of 5 developers
+• Implemented new feature that increased conversions by 25%"
+                          className="min-h-[100px]"
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
             {currentStep === "projects" && (
-              <div>
+              <div className="space-y-6">
                 <div className="flex justify-between items-center mb-4">
                   <Heading level={3}>Projects</Heading>
                   <Button variant="outline" size="sm" onClick={addProject}>
-                    Add Project
+                    <Plus className="h-4 w-4 mr-2" /> Add Project
                   </Button>
                 </div>
+                
                 {resume.projects.length === 0 ? (
                   <div className="text-center py-8 border rounded-lg">
+                    <Code className="mx-auto h-12 w-12 text-muted-foreground opacity-30 mb-4" />
                     <p className="text-muted-foreground mb-4">
                       No projects added yet. Add some projects to showcase your skills!
                     </p>
@@ -569,15 +759,25 @@ const ResumeBuilder = () => {
                   </div>
                 ) : (
                   resume.projects.map((project, index) => (
-                    <div key={project.id} className="mb-6 p-4 border rounded-lg">
-                      <Heading level={4} className="mb-4">Project #{index + 1}</Heading>
+                    <div key={project.id} className="mb-6 p-4 border rounded-lg bg-card/50">
+                      <div className="flex justify-between items-center mb-4">
+                        <Heading level={4} className="flex items-center">
+                          <FilePlus className="h-5 w-5 mr-2 text-muted-foreground" />
+                          Project #{index + 1}
+                        </Heading>
+                        <Button variant="ghost" size="sm" onClick={() => removeProject(index)} className="h-8 w-8 p-0">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                      
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
-                          <Label htmlFor={`project-title-${index}`}>Project Title</Label>
+                          <Label htmlFor={`project-title-${index}`}>Project Title *</Label>
                           <Input 
                             id={`project-title-${index}`} 
                             value={project.title}
                             onChange={(e) => updateProject(index, 'title', e.target.value)}
+                            placeholder="E-commerce Platform"
                           />
                         </div>
                         <div>
@@ -599,13 +799,20 @@ const ResumeBuilder = () => {
                           />
                         </div>
                         <div className="md:col-span-2">
-                          <Label htmlFor={`project-tech-${index}`}>Technologies Used</Label>
+                          <Label htmlFor={`project-tech-${index}`}>Technologies Used *</Label>
                           <Input 
                             id={`project-tech-${index}`} 
                             placeholder="React, Node.js, MongoDB, etc."
                             value={project.technologies.join(', ')}
-                            onChange={(e) => updateProject(index, 'technologies', e.target.value.split(',').map(t => t.trim()))}
+                            onChange={(e) => updateProject(index, 'technologies', e.target.value.split(',').map(t => t.trim()).filter(t => t !== ''))}
                           />
+                          {project.technologies.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {project.technologies.map((tech, idx) => (
+                                <Badge key={idx} variant="outline" className="mr-1 mb-1">{tech}</Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="md:col-span-2">
                           <Label htmlFor={`project-link-${index}`}>Project Link (optional)</Label>
@@ -617,12 +824,13 @@ const ResumeBuilder = () => {
                           />
                         </div>
                         <div className="md:col-span-2">
-                          <Label htmlFor={`project-desc-${index}`}>Description</Label>
+                          <Label htmlFor={`project-desc-${index}`}>Description *</Label>
                           <Textarea 
                             id={`project-desc-${index}`} 
                             placeholder="Describe your project, its features, and your role"
                             value={project.description}
                             onChange={(e) => updateProject(index, 'description', e.target.value)}
+                            className="min-h-[100px]"
                           />
                         </div>
                       </div>
@@ -633,13 +841,26 @@ const ResumeBuilder = () => {
             )}
 
             {currentStep === "preview" && (
-              <div>
+              <div className="space-y-6">
                 <Heading level={3} className="mb-4">Resume Preview</Heading>
-                <div className="resume-preview border rounded-lg p-6 bg-card text-card-foreground shadow">
+                <div className="flex justify-center mb-6">
+                  <div className="inline-flex rounded-md shadow-sm">
+                    <Button variant="outline" onClick={downloadResume} className="rounded-r-none">
+                      <Download className="mr-2 h-4 w-4" /> Download PDF
+                    </Button>
+                    <Button variant="outline" onClick={saveProgress} className="rounded-l-none border-l-0">
+                      <Save className="mr-2 h-4 w-4" /> Save Progress
+                    </Button>
+                  </div>
+                </div>
+                <div className="resume-preview border rounded-lg p-6 bg-white text-black shadow-sm max-w-4xl mx-auto">
                   <div className="mb-6 border-b pb-4">
                     <h1 className="text-2xl font-bold mb-1">
                       {resume.personalInfo.firstName} {resume.personalInfo.lastName}
                     </h1>
+                    {resume.personalInfo.jobTitle && (
+                      <p className="text-lg text-gray-600 mb-2">{resume.personalInfo.jobTitle}</p>
+                    )}
                     <div className="flex flex-wrap gap-3 text-sm">
                       {resume.personalInfo.email && (
                         <span>{resume.personalInfo.email}</span>
@@ -650,46 +871,81 @@ const ResumeBuilder = () => {
                       {resume.personalInfo.location && (
                         <span>{resume.personalInfo.location}</span>
                       )}
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-sm mt-1">
                       {resume.personalInfo.linkedin && (
-                        <span className="text-highlight">{resume.personalInfo.linkedin}</span>
+                        <span className="text-blue-600">{resume.personalInfo.linkedin}</span>
                       )}
                       {resume.personalInfo.github && (
-                        <span className="text-highlight">{resume.personalInfo.github}</span>
+                        <span className="text-blue-600">{resume.personalInfo.github}</span>
                       )}
                       {resume.personalInfo.website && (
-                        <span className="text-highlight">{resume.personalInfo.website}</span>
+                        <span className="text-blue-600">{resume.personalInfo.website}</span>
                       )}
                     </div>
+                    {resume.personalInfo.bio && (
+                      <p className="mt-3 text-sm">{resume.personalInfo.bio}</p>
+                    )}
                   </div>
 
-                  <div className="mb-6">
-                    <h2 className="text-xl font-semibold mb-2">Education</h2>
-                    {resume.education.map((edu, index) => (
-                      <div key={index} className="mb-3">
-                        <div className="flex justify-between">
-                          <div>
-                            <h3 className="font-medium">{edu.institution}</h3>
-                            <p>{edu.degree} in {edu.fieldOfStudy}</p>
-                          </div>
-                          <div className="text-right">
-                            <p>{edu.startDate} - {edu.endDate}</p>
-                            <p>{edu.location}</p>
-                          </div>
-                        </div>
-                        {edu.gpa && <p className="text-sm mt-1">GPA: {edu.gpa}</p>}
-                        {edu.description && <p className="text-sm mt-1">{edu.description}</p>}
-                      </div>
-                    ))}
-                  </div>
-
-                  {resume.skills.length > 0 && (
+                  {resume.education.length > 0 && (
                     <div className="mb-6">
-                      <h2 className="text-xl font-semibold mb-2">Skills</h2>
+                      <h2 className="text-xl font-semibold mb-2 border-b pb-1">Education</h2>
+                      {resume.education.map((edu, index) => (
+                        <div key={index} className="mb-3">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-medium">{edu.institution}</h3>
+                              <p>{edu.degree} in {edu.fieldOfStudy}</p>
+                            </div>
+                            <div className="text-right">
+                              <p>{edu.startDate} - {edu.endDate}</p>
+                              <p>{edu.location}</p>
+                            </div>
+                          </div>
+                          {edu.gpa && <p className="text-sm mt-1">GPA: {edu.gpa}</p>}
+                          {edu.description && <p className="text-sm mt-1">{edu.description}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {resume.experience.length > 0 && (
+                    <div className="mb-6">
+                      <h2 className="text-xl font-semibold mb-2 border-b pb-1">Work Experience</h2>
+                      {resume.experience.map((exp, index) => (
+                        <div key={exp.id} className="mb-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="font-medium">{exp.position}</h3>
+                              <p className="text-gray-700">{exp.company}</p>
+                            </div>
+                            <div className="text-right">
+                              <p>{exp.startDate} - {exp.endDate}</p>
+                              <p>{exp.location}</p>
+                            </div>
+                          </div>
+                          <p className="text-sm mt-1">{exp.description}</p>
+                          {exp.highlights.length > 0 && (
+                            <ul className="list-disc list-inside text-sm mt-1 ml-1">
+                              {exp.highlights.map((highlight, idx) => (
+                                <li key={idx}>{highlight}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {resume.skills.some(sk => sk.items.length > 0) && (
+                    <div className="mb-6">
+                      <h2 className="text-xl font-semibold mb-2 border-b pb-1">Skills</h2>
                       {resume.skills.map((skillCategory, index) => (
                         skillCategory.items.length > 0 && (
                           <div key={index} className="mb-2">
                             <h3 className="font-medium">{skillCategory.category}</h3>
-                            <p>{skillCategory.items.join(', ')}</p>
+                            <p className="text-sm">{skillCategory.items.join(', ')}</p>
                           </div>
                         )
                       ))}
@@ -698,19 +954,21 @@ const ResumeBuilder = () => {
 
                   {resume.projects.length > 0 && (
                     <div className="mb-6">
-                      <h2 className="text-xl font-semibold mb-2">Projects</h2>
+                      <h2 className="text-xl font-semibold mb-2 border-b pb-1">Projects</h2>
                       {resume.projects.map((project, index) => (
                         <div key={project.id} className="mb-3">
-                          <div className="flex justify-between">
+                          <div className="flex justify-between items-start">
                             <h3 className="font-medium">{project.title}</h3>
-                            <p>{project.startDate} - {project.endDate}</p>
+                            {(project.startDate || project.endDate) && (
+                              <p>{project.startDate} - {project.endDate}</p>
+                            )}
                           </div>
-                          <p className="text-sm text-highlight mb-1">
+                          <p className="text-sm text-blue-600 mb-1">
                             {project.technologies.join(' • ')}
                           </p>
                           <p className="text-sm">{project.description}</p>
                           {project.link && (
-                            <p className="text-sm text-highlight mt-1">{project.link}</p>
+                            <p className="text-sm text-blue-600 mt-1">{project.link}</p>
                           )}
                         </div>
                       ))}
