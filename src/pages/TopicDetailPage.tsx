@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "@/components/Layout/MainLayout";
@@ -20,7 +19,7 @@ const TopicDetailPage = () => {
   useEffect(() => {
     if (topicId) {
       // In a real app, fetch topic data from API
-      const currentTopic = mockTopics.find(t => t.id === topicId);
+      const currentTopic = mockTopics.find((t) => t.id === topicId);
       if (currentTopic) {
         setTopic(currentTopic);
       } else {
@@ -47,42 +46,44 @@ const TopicDetailPage = () => {
 
   return (
     <MainLayout showSidebar={true}>
-      <motion.div 
+      <motion.div
         className="container mx-auto px-4 py-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
         <div className="mb-8">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={() => navigate("/aptitude")}
-            className="mb-4 hover:bg-gray-100 transition-all duration-300"
+            className="mb-4 hover:border border border-black hover:border-white transition-all duration-300"
           >
             <ChevronLeft className="mr-2 h-4 w-4" /> Back to Topics
           </Button>
-          <h1 className="text-4xl font-bold text-custom-darkBlue1 mb-2">{topic.name}</h1>
+          <h1 className="text-4xl font-bold text-custom-darkBlue1 mb-2">
+            {topic.name}
+          </h1>
           <p className="text-gray-600 text-lg">{topic.description}</p>
         </div>
 
-        <Tabs 
-          defaultValue="theory" 
-          className="w-full" 
+        <Tabs
+          defaultValue="theory"
+          className="w-full"
           value={activeTab}
           onValueChange={setActiveTab}
         >
           <div className="flex justify-center items-center mb-8">
-            <TabsList className="grid grid-cols-2 w-full max-w-md">
-              <TabsTrigger 
-                value="theory" 
-                className="px-8 py-3 text-base font-medium flex items-center gap-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800"
+            <TabsList className="grid grid-cols-2 w-full h-18 max-w-md">
+              <TabsTrigger
+                value="theory"
+                className="px-8 py-3 text-base font-small flex items-center gap-2 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800"
               >
                 <BookOpen className="h-5 w-5" />
                 Theory
               </TabsTrigger>
-              <TabsTrigger 
-                value="questions" 
-                className="px-8 py-3 text-base font-medium flex items-center gap-2 data-[state=active]:bg-green-100 data-[state=active]:text-green-800"
+              <TabsTrigger
+                value="questions"
+                className="px-8 py-3 text-base font-medium flex items-center gap-2 data-[state=active]:bg-blue-100 data-[state=active]:text-green-800"
               >
                 <BookText className="h-5 w-5" />
                 Practice Questions
@@ -90,11 +91,11 @@ const TopicDetailPage = () => {
             </TabsList>
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 min-h-[500px]">
+          <div className="bg-black rounded-xl shadow-lg p-6 min-h-[500px]">
             <TabsContent value="theory" className="animate-fade-in">
               <TopicConcepts topicId={topicId || ""} />
             </TabsContent>
-            
+
             <TabsContent value="questions" className="animate-fade-in">
               <TopicQuestionsList topicId={topicId || ""} />
             </TabsContent>
